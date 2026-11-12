@@ -69,6 +69,60 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 tr:hover .rm-btn{opacity:1}
 .rm-btn:hover{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red)}
 
+/* CHECKBOX COLUMN */
+.cb-col{width:36px;text-align:center!important;padding:0 6px!important}
+.row-cb{width:15px;height:15px;accent-color:var(--blue);cursor:pointer;vertical-align:middle}
+tbody tr.selected-row{background:rgba(59,130,246,.06)!important}
+
+/* FLOATING ANALYSE BAR */
+.ab{position:fixed;bottom:-80px;left:0;right:0;background:rgba(11,15,26,.96);border-top:1px solid var(--b2);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;z-index:160;backdrop-filter:blur(12px);transition:bottom .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 32px rgba(0,0,0,.4)}
+.ab.show{bottom:0}
+.ab-left{display:flex;align-items:center;gap:14px}
+.ab-count{font-size:15px;font-weight:700;color:var(--blue)}
+.ab-hint{font-size:12px;color:var(--t3)}
+.ab-right{display:flex;gap:10px}
+
+/* ANALYSIS FULL OVERLAY */
+.an-ov{position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;display:none;scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
+.an-ov.show{display:block}
+.an-hdr{position:sticky;top:0;background:rgba(10,13,22,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--b1);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;z-index:10}
+.an-hdr-left h2{font-size:16px;font-weight:700}
+.an-hdr-left p{font-size:11px;color:var(--t3);margin-top:2px}
+.an-body{max-width:1100px;margin:0 auto;padding:28px}
+/* Tabs for multi-company */
+.an-tabs{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap}
+.an-tab{padding:7px 16px;border-radius:8px;border:1px solid var(--b2);background:transparent;color:var(--t2);font-size:13px;cursor:pointer;transition:all .2s}
+.an-tab.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+/* Report card */
+.rpt{background:var(--card);border:1px solid var(--b1);border-radius:12px;margin-bottom:18px;overflow:hidden}
+.rpt-ttl{padding:14px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px}
+.rpt-ttl-icon{font-size:16px}
+.rpt-ttl-text{font-size:13px;font-weight:700;color:var(--t1)}
+.rpt-ttl-sub{font-size:11px;color:var(--t3);margin-left:auto}
+.rpt-body{padding:16px 18px}
+/* Summary box */
+.summary-box{font-size:13px;color:var(--t2);line-height:1.8;padding:14px 16px;background:var(--bg);border-radius:8px;border-left:3px solid var(--blue)}
+/* Stat row */
+.stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.sr-item{flex:1;min-width:100px;background:var(--bg);border-radius:8px;padding:10px 12px;border:1px solid var(--b1)}
+.sr-lbl{font-size:10px;color:var(--t3);margin-bottom:3px}
+.sr-val{font-size:15px;font-weight:700}
+/* Events / controversies */
+.ev-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)}
+.ev-item:last-child{border-bottom:none}
+.ev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.ev-text{font-size:12px;color:var(--t2);line-height:1.5}
+.ev-meta{font-size:10px;color:var(--t3);margin-top:2px}
+/* Analyst bar */
+.analyst-bars{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:8px 0}
+.ab-buy{background:var(--green)}.ab-hold{background:var(--yellow)}.ab-sell{background:var(--red)}
+/* Loading inside report */
+.rpt-loading{display:flex;align-items:center;gap:10px;padding:20px;color:var(--t3);font-size:12px}
+/* Compare grid (multi) */
+.cmp-grid{display:grid;gap:14px}
+@media(min-width:700px){.cmp-grid.cols-2{grid-template-columns:1fr 1fr}}
+@media(min-width:1000px){.cmp-grid.cols-3{grid-template-columns:1fr 1fr 1fr}}
+
 /* TABLE */
 .tw{background:var(--card);border-radius:10px;border:1px solid var(--b1);overflow:hidden}
 table{width:100%;border-collapse:collapse}
@@ -337,6 +391,7 @@ td:first-child{text-align:left}
   <div class="tw">
     <table>
       <thead><tr>
+        <th class="cb-col"><input type="checkbox" class="row-cb" id="cb-all" onchange="toggleAll(this)" title="Select all"></th>
         <th onclick="sortBy('sym')">Symbol ⇅</th>
         <th onclick="sortBy('price')">Price ⇅</th>
         <th onclick="sortBy('chg')">Change ⇅</th>
@@ -830,6 +885,7 @@ function render(){
   const tbody=document.getElementById('tbody');
   const q=(document.getElementById('srch').value||'').toLowerCase();
   const sigOrd={'Strong Buy':3,'Buy':2,'Watch':1,'Hold':0};
+  const sel=selectedStocks;
   let rows=store.filter(r=>{
     const okS=fil==='All'||r.cfg.sector===fil;
     const okQ=!q||r.cfg.sym.toLowerCase().includes(q)||(r.q.name||'').toLowerCase().includes(q);
@@ -859,9 +915,13 @@ function render(){
     const pos=Math.max(0,Math.min(100,(q.price-lo)/(hi-lo||1)*100));
     const vr=Math.min(100,q.avgVolume>0?(q.volume/q.avgVolume)*50:40);
     const init=r.cfg.sym.replace('-','').slice(0,3);
-    return `<tr onclick="openPanel('${r.cfg.sym}')"
+    return `<tr id="tr-${r.cfg.sym}" onclick="openPanel('${r.cfg.sym}')"
                onmouseenter="showTip(event,'${r.cfg.sym}')"
-               onmouseleave="hideTip()">
+               onmouseleave="hideTip()"
+               class="${sel.has(r.cfg.sym)?'selected-row':''}">
+      <td class="cb-col" onclick="event.stopPropagation()">
+        <input type="checkbox" class="row-cb" ${sel.has(r.cfg.sym)?'checked':''} onchange="toggleSel('${r.cfg.sym}',this)">
+      </td>
       <td><div class="stc">
         <div class="stlogo">${init}</div>
         <div><div class="sym">${r.cfg.sym}</div><div class="sn">${q.name||''}</div></div>
@@ -1052,8 +1112,334 @@ async function doRefresh(){
   document.getElementById('lastUp').textContent='Updated '+new Date().toLocaleTimeString();
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   SELECTION & ANALYSIS ENGINE
+═══════════════════════════════════════════════════════════════════ */
+const selectedStocks = new Set();
+
+function toggleSel(sym, cb){
+  cb.checked ? selectedStocks.add(sym) : selectedStocks.delete(sym);
+  const tr=document.getElementById('tr-'+sym);
+  if(tr) tr.classList.toggle('selected-row', cb.checked);
+  updateAB();
+}
+function toggleAll(masterCb){
+  store.forEach(r=>{
+    masterCb.checked ? selectedStocks.add(r.cfg.sym) : selectedStocks.delete(r.cfg.sym);
+  });
+  render(); updateAB();
+}
+function clearSel(){
+  selectedStocks.clear();
+  const cbAll=document.getElementById('cb-all');
+  if(cbAll) cbAll.checked=false;
+  render(); updateAB();
+}
+function updateAB(){
+  const n=selectedStocks.size;
+  const bar=document.getElementById('ab');
+  bar.classList.toggle('show', n>0);
+  document.getElementById('ab-count').textContent=n+' '+(n===1?'company':'companies');
+}
+
+/* ── ANALYSIS DATA FETCH ──────────────────────────────────────────── */
+async function fetchAnalysisData(sym){
+  const [chartRes, summaryRes, newsRes] = await Promise.allSettled([
+    fetchChart1Y(sym,'1y','1wk'),
+    fetchSummary(sym),
+    fetchNews(sym),
+  ]);
+  return{
+    sym,
+    chart:   chartRes.status==='fulfilled'   ? chartRes.value   : null,
+    summary: summaryRes.status==='fulfilled' ? summaryRes.value : null,
+    news:    newsRes.status==='fulfilled'    ? newsRes.value    : [],
+  };
+}
+
+/* ── TEXT GENERATION ─────────────────────────────────────────────── */
+function genExecSummary(q, cfg, chart, summary, news){
+  const parts=[];
+  // 1Y return
+  if(chart&&chart.closes.length>=2){
+    const cl=chart.closes.filter(Boolean);
+    const ret=((cl[cl.length-1]-cl[0])/cl[0]*100);
+    const trend=ret>20?'strongly bullish':ret>8?'bullish':ret>-5?'relatively flat':ret>-15?'bearish':'strongly bearish';
+    parts.push(`<strong>${q.name}</strong> has ${ret>=0?'<span class="up">gained':'<span class="dn">lost'} ${Math.abs(ret).toFixed(1)}%</span> over the past year, reflecting a <strong>${trend}</strong> trajectory.`);
+  }
+  // 52W position
+  const lo=q.low52||0, hi=q.high52||q.price, rng=hi-lo||1;
+  const pos=((q.price-lo)/rng*100);
+  if(pos>82) parts.push('Currently trading <strong>near its 52-week high</strong> — strong momentum, but watch for resistance.');
+  else if(pos<18) parts.push('Stock is near its <strong>52-week low</strong> — potential value entry, but verify downside risks.');
+  else parts.push(`Trading at <strong>${pos.toFixed(0)}%</strong> of its 52-week range.`);
+  // Earnings beat rate
+  const hist=(summary?.earnings?.earningsChart?.quarterly||[]).filter(h=>h.actual?.raw!=null&&h.estimate?.raw!=null);
+  if(hist.length){
+    const beats=hist.filter(h=>h.actual.raw>=h.estimate.raw).length;
+    const beatPct=(beats/hist.length*100).toFixed(0);
+    const avgSurp=hist.reduce((s,h)=>s+((h.actual.raw-h.estimate.raw)/Math.abs(h.estimate.raw||1)*100),0)/hist.length;
+    parts.push(`Earnings beat rate: <strong>${beats}/${hist.length} quarters (${beatPct}%)</strong>${avgSurp>0?`, avg surprise <span class="up">+${avgSurp.toFixed(1)}%</span>`:''}. `);
+  }
+  // Valuation comment
+  if(q.pe){
+    const rel=q.pe/cfg.pe;
+    const comment=rel>1.4?'premium-valued compared to sector peers':rel<0.75?'attractively valued versus peers':'fairly valued';
+    parts.push(`P/E of <strong>${q.pe.toFixed(1)}</strong> — ${comment}.`);
+  }
+  // Volume signal
+  if(q.avgVolume>0){
+    const vr=q.volume/q.avgVolume;
+    if(vr>1.8) parts.push(`Today's volume is <strong class="up">${vr.toFixed(1)}× above average</strong> — elevated institutional interest.`);
+  }
+  return parts.join(' ');
+}
+
+function classifyNews(news){
+  const upcoming=[], controversy=[], positive=[], general=[];
+  const upWords=['upcoming','will launch','announces','to release','set to','expects to','scheduled','plans to','next quarter','2025','2026','roadmap','new product','partnership','merger','acquisition','deal','agreement'];
+  const conWords=['lawsuit','probe','sec','doj','investigation','fine','penalty','recall','ban','hack','breach','fraud','scandal','antitrust','layoff','settlement','subpoena','warning','downgrade','miss','loss','decline'];
+  const posWords=['beats','record','growth','surge','upgraded','profit','revenue beat','strong','exceeds','expands','approval','approved','wins','launch success'];
+  news.forEach(n=>{
+    const t=(n.title||'').toLowerCase();
+    if(conWords.some(w=>t.includes(w))) controversy.push(n);
+    else if(upWords.some(w=>t.includes(w))) upcoming.push(n);
+    else if(posWords.some(w=>t.includes(w))) positive.push(n);
+    else general.push(n);
+  });
+  return{upcoming,controversy,positive,general};
+}
+
+/* ── RENDER ANALYSIS REPORT ──────────────────────────────────────── */
+function renderReportCard(title, icon, sub='', bodyHtml){
+  return `<div class="rpt">
+    <div class="rpt-ttl">
+      <span class="rpt-ttl-icon">${icon}</span>
+      <span class="rpt-ttl-text">${title}</span>
+      ${sub?`<span class="rpt-ttl-sub">${sub}</span>`:''}
+    </div>
+    <div class="rpt-body">${bodyHtml}</div>
+  </div>`;
+}
+
+function renderAnalysisPanel(r, data){
+  const q=r.q, cfg=r.cfg, sig=r.sig;
+  const{chart, summary, news}=data;
+  const ap=summary?.assetProfile;
+  const cal=summary?.calendarEvents?.earnings;
+  const hist=(summary?.earnings?.earningsChart?.quarterly||[]).filter(h=>h.actual?.raw!=null&&h.estimate?.raw!=null);
+  const ks=summary?.defaultKeyStatistics;
+  const fd=summary?.financialData;
+  const cats=classifyNews(news||[]);
+  const lo=q.low52||0, hi=q.high52||q.price;
+  const pos52=((q.price-lo)/((hi-lo)||1)*100);
+
+  let html='';
+
+  // 1. EXECUTIVE SUMMARY
+  html+=renderReportCard('Executive Summary','📋','AI-generated from live data',
+    `<div class="summary-box">${genExecSummary(q,cfg,chart,summary,news)}</div>`);
+
+  // 2. PRICE BEHAVIOR
+  const chartSVG=buildChartSVG(chart?.closes||[],q.symbol);
+  const cl=chart?chart.closes.filter(Boolean):[];
+  const ret1Y=cl.length>=2?((cl[cl.length-1]-cl[0])/cl[0]*100):null;
+  let priceBehavior=`
+    <div class="stat-row">
+      <div class="sr-item"><div class="sr-lbl">1Y Return</div><div class="sr-val ${ret1Y>=0?'up':'dn'}">${ret1Y!=null?(ret1Y>=0?'+':'')+ret1Y.toFixed(1)+'%':'—'}</div></div>
+      <div class="sr-item"><div class="sr-lbl">52W Position</div><div class="sr-val">${pos52.toFixed(0)}%</div></div>
+      <div class="sr-item"><div class="sr-lbl">Beta</div><div class="sr-val">${ks?.beta?.toFixed(2)||'—'}</div></div>
+      <div class="sr-item"><div class="sr-lbl">Today</div><div class="sr-val ${cc(q.changePct)}">${f.pc(q.changePct)}</div></div>
+    </div>
+    ${chartSVG}
+    <div class="chart-labels" style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);margin-top:4px">
+      ${chart&&chart.timestamps.length>=2?`<span>${new Date(chart.timestamps[0]*1000).toLocaleDateString('en-US',{month:'short',year:'2-digit'})}</span><span>Today</span>`:''}
+    </div>`;
+  html+=renderReportCard('Price Behavior','📈','1 year weekly',priceBehavior);
+
+  // 3. EARNINGS PERFORMANCE
+  const nextDates=cal?.earningsDate;
+  const nextFmt=nextDates?.length?new Date(nextDates[0].raw*1000).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'Unknown';
+  const beats=hist.filter(h=>h.actual.raw>=h.estimate.raw).length;
+  const maxE=Math.max(...hist.flatMap(h=>[Math.abs(h.actual?.raw||0),Math.abs(h.estimate?.raw||0)]),0.01);
+  const barsH=hist.slice(-6).map(h=>{
+    const beat=h.actual.raw>=h.estimate.raw;
+    const eH=Math.max(2,(Math.abs(h.estimate.raw)/maxE)*60);
+    const aH=Math.max(2,(Math.abs(h.actual.raw)/maxE)*60);
+    return `<div class="eq"><div class="eq-bars">
+      <div class="eq-bar eq-est" style="height:${eH.toFixed(0)}px" title="Est $${h.estimate.raw.toFixed(2)}"></div>
+      <div class="eq-bar ${beat?'eq-beat':'eq-miss'}" style="height:${aH.toFixed(0)}px" title="Act $${h.actual.raw.toFixed(2)}"></div>
+    </div><div class="eq-lbl">${h.date||''}</div></div>`;
+  }).join('');
+  const avgSurp=hist.length?hist.reduce((s,h)=>s+((h.actual.raw-h.estimate.raw)/Math.abs(h.estimate.raw||1)*100),0)/hist.length:0;
+  let earnHtml=`
+    <div class="earn-next">
+      <span class="enl">&#128197; Next Earnings</span>
+      <span class="env">${nextFmt}</span>
+    </div>
+    ${hist.length?`
+    <div class="stat-row">
+      <div class="sr-item"><div class="sr-lbl">Beat Rate</div><div class="sr-val up">${beats}/${hist.length}</div></div>
+      <div class="sr-item"><div class="sr-lbl">Avg Surprise</div><div class="sr-val ${avgSurp>=0?'up':'dn'}">${avgSurp>=0?'+':''}${avgSurp.toFixed(1)}%</div></div>
+      <div class="sr-item"><div class="sr-lbl">Last EPS Act</div><div class="sr-val">$${hist[hist.length-1]?.actual?.raw?.toFixed(2)||'—'}</div></div>
+      <div class="sr-item"><div class="sr-lbl">Last EPS Est</div><div class="sr-val">$${hist[hist.length-1]?.estimate?.raw?.toFixed(2)||'—'}</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px">EPS Actual vs Estimate — last ${hist.slice(-6).length} quarters</div>
+    <div class="earn-chart">${barsH}</div>
+    <div class="earn-legend"><span><span class="leg-dot" style="background:var(--b2)"></span>Estimate</span><span><span class="leg-dot" style="background:var(--green)"></span>Beat</span><span><span class="leg-dot" style="background:var(--red)"></span>Miss</span></div>`
+    :'<div class="p-na">Earnings history unavailable</div>'}`;
+  html+=renderReportCard('Earnings Performance','💰',beats+'/'+Math.max(hist.length,1)+' beat',earnHtml);
+
+  // 4. UPCOMING EVENTS
+  const upcomingHtml=cats.upcoming.length?
+    cats.upcoming.slice(0,5).map(n=>`
+      <div class="ev-item">
+        <div class="ev-dot" style="background:var(--blue)"></div>
+        <div><div class="ev-text">${n.title}</div><div class="ev-meta">${n.publisher||''} &nbsp;·&nbsp; ${f.ago(n.providerPublishTime)}</div></div>
+      </div>`).join('')+
+      (cats.positive.slice(0,3).map(n=>`
+      <div class="ev-item">
+        <div class="ev-dot" style="background:var(--green)"></div>
+        <div><div class="ev-text">${n.title}</div><div class="ev-meta">${n.publisher||''} &nbsp;·&nbsp; ${f.ago(n.providerPublishTime)}</div></div>
+      </div>`).join(''))
+    :'<div class="p-na">No upcoming event news detected</div>';
+  html+=renderReportCard('Upcoming Events &amp; Opportunities','🚀',cats.upcoming.length+' signals',upcomingHtml);
+
+  // 5. CONTROVERSIES & RISKS
+  const conHtml=cats.controversy.length?
+    cats.controversy.slice(0,5).map(n=>`
+      <div class="ev-item">
+        <div class="ev-dot" style="background:var(--red)"></div>
+        <div><a href="${n.link||'#'}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
+          <div class="ev-text">${n.title}</div>
+          <div class="ev-meta">${n.publisher||''} &nbsp;·&nbsp; ${f.ago(n.providerPublishTime)}</div>
+        </a></div>
+      </div>`).join('')
+    :'<div class="p-na" style="background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2);color:var(--green)">✓ No controversies or risk alerts detected in recent news</div>';
+  html+=renderReportCard('Controversies &amp; Risks','⚠️',cats.controversy.length?cats.controversy.length+' alerts':'Clean',conHtml);
+
+  // 6. KEY METRICS & ANALYST VIEW
+  const recTrend=summary?.recommendationTrend?.trend?.[0];
+  const buy=(recTrend?.strongBuy||0)+(recTrend?.buy||0);
+  const hold=recTrend?.hold||0;
+  const sell=(recTrend?.strongSell||0)+(recTrend?.sell||0);
+  const total=buy+hold+sell||1;
+  const target=summary?.financialData?.targetMeanPrice;
+  const upside=target?((target-q.price)/q.price*100):null;
+  const analystHtml=`
+    <div class="stat-row">
+      <div class="sr-item"><div class="sr-lbl">Forward P/E</div><div class="sr-val">${ks?.forwardPE?.toFixed(1)||'—'}</div></div>
+      <div class="sr-item"><div class="sr-lbl">PEG Ratio</div><div class="sr-val">${ks?.pegRatio?.toFixed(2)||'—'}</div></div>
+      <div class="sr-item"><div class="sr-lbl">Profit Margin</div><div class="sr-val">${fd?.profitMargins!=null?(fd.profitMargins*100).toFixed(1)+'%':'—'}</div></div>
+      <div class="sr-item"><div class="sr-lbl">Revenue Growth</div><div class="sr-val ${fd?.revenueGrowth>=0?'up':'dn'}">${fd?.revenueGrowth!=null?(fd.revenueGrowth*100).toFixed(1)+'%':'—'}</div></div>
+    </div>
+    ${recTrend&&total>1?`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:4px">
+        <span>Buy (${buy})</span><span>Hold (${hold})</span><span>Sell (${sell})</span>
+      </div>
+      <div class="analyst-bars">
+        <div class="ab-buy" style="width:${(buy/total*100).toFixed(0)}%"></div>
+        <div class="ab-hold" style="width:${(hold/total*100).toFixed(0)}%"></div>
+        <div class="ab-sell" style="width:${(sell/total*100).toFixed(0)}%"></div>
+      </div>
+    </div>
+    ${target?`<div style="font-size:12px;color:var(--t2)">Analyst price target: <strong style="color:var(--t1)">$${target.toFixed(2)}</strong> — <span class="${upside>=0?'up':'dn'}">${upside>=0?'+':''}${upside?.toFixed(1)}% ${upside>=0?'upside':'downside'}</span> from current price</div>`:''}
+    `:'<div class="p-na">Analyst data unavailable</div>'}`;
+  html+=renderReportCard('Key Metrics &amp; Analyst Consensus','🎯','',analystHtml);
+
+  // 7. COMPANY PROFILE
+  if(ap){
+    const profileHtml=`
+      <div class="stat-row">
+        <div class="sr-item"><div class="sr-lbl">Sector</div><div class="sr-val" style="font-size:13px">${ap.sector||cfg.sector}</div></div>
+        <div class="sr-item"><div class="sr-lbl">Industry</div><div class="sr-val" style="font-size:12px">${ap.industry||'—'}</div></div>
+        <div class="sr-item"><div class="sr-lbl">Employees</div><div class="sr-val" style="font-size:13px">${ap.fullTimeEmployees?.toLocaleString()||'—'}</div></div>
+        <div class="sr-item"><div class="sr-lbl">Country</div><div class="sr-val" style="font-size:13px">${ap.country||'—'}</div></div>
+      </div>
+      ${ap.longBusinessSummary?`<div class="desc-txt" style="font-size:12px;color:var(--t2);line-height:1.7">${ap.longBusinessSummary}</div>`:''}`;
+    html+=renderReportCard('Company Profile','🏢','',profileHtml);
+  }
+
+  return html;
+}
+
+/* ── RUN ANALYSIS ─────────────────────────────────────────────────── */
+async function runAnalysis(){
+  if(!selectedStocks.size) return;
+  const syms=[...selectedStocks];
+  const anOv=document.getElementById('anOv');
+  const anTabs=document.getElementById('anTabs');
+  const anPanels=document.getElementById('anPanels');
+  document.getElementById('an-date').textContent='Generated '+new Date().toLocaleString();
+
+  // Show overlay with loading state
+  anOv.classList.add('show');
+  document.body.style.overflow='hidden';
+
+  // Render tabs
+  anTabs.innerHTML=syms.map((sym,i)=>`
+    <button class="an-tab ${i===0?'on':''}" onclick="switchTab('${sym}',this)">${sym}</button>`).join('');
+
+  // Show loading panels
+  anPanels.innerHTML=syms.map((sym,i)=>`
+    <div id="anp-${sym}" style="${i>0?'display:none':''}">
+      <div class="rpt"><div class="rpt-body"><div class="rpt-loading"><div class="spin"></div>Fetching data for ${sym}…</div></div></div>
+    </div>`).join('');
+
+  // Fetch & render each company
+  for(const sym of syms){
+    const r=store.find(x=>x.cfg.sym===sym);
+    if(!r) continue;
+    const data=await fetchAnalysisData(sym);
+    const panelEl=document.getElementById('anp-'+sym);
+    if(panelEl) panelEl.innerHTML=renderAnalysisPanel(r,data);
+  }
+}
+
+function switchTab(sym, btn){
+  document.querySelectorAll('.an-tab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('[id^="anp-"]').forEach(p=>p.style.display='none');
+  const target=document.getElementById('anp-'+sym);
+  if(target) target.style.display='block';
+  document.getElementById('anOv').scrollTo(0,0);
+}
+
+function closeAnalysis(){
+  document.getElementById('anOv').classList.remove('show');
+  document.body.style.overflow='';
+}
+
 doRefresh();
 setInterval(doRefresh,90000);
 </script>
+<!-- FLOATING ANALYSE BAR -->
+<div class="ab" id="ab">
+  <div class="ab-left">
+    <span class="ab-count" id="ab-count">0 selected</span>
+    <span class="ab-hint">companies selected for analysis</span>
+  </div>
+  <div class="ab-right">
+    <button class="btn" onclick="clearSel()">Clear</button>
+    <button class="btn btn-p" onclick="runAnalysis()">&#128202; Analyse</button>
+  </div>
+</div>
+
+<!-- ANALYSIS OVERLAY -->
+<div class="an-ov" id="anOv">
+  <div class="an-hdr">
+    <div class="an-hdr-left">
+      <h2>&#128202; Company Analysis Report</h2>
+      <p id="an-date"></p>
+    </div>
+    <button class="btn" onclick="closeAnalysis()">&#8592; Back to Dashboard</button>
+  </div>
+  <div class="an-body">
+    <div class="an-tabs" id="anTabs"></div>
+    <div id="anPanels"></div>
+  </div>
+</div>
+
 </body>
 </html>
