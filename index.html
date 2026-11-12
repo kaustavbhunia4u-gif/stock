@@ -57,6 +57,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .chip{padding:4px 12px;border-radius:16px;border:1px solid var(--b2);background:transparent;color:var(--t2);font-size:11px;cursor:pointer;transition:all .2s}
 .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .chip:hover:not(.on){background:var(--card2);color:var(--t1)}
+/* ADD BAR */
+.add-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;background:var(--card);border:1px solid var(--b1);border-radius:10px;padding:10px 14px}
+.add-bar-label{font-size:11px;color:var(--t3);white-space:nowrap;flex-shrink:0}
+.add-input{flex:1;background:var(--bg);border:1px solid var(--b2);border-radius:7px;padding:7px 12px;color:var(--t1);font-size:12px;outline:none;transition:border-color .2s;min-width:0}
+.add-input:focus{border-color:var(--blue)}
+.add-input::placeholder{color:var(--t3)}
+.add-err{font-size:11px;color:var(--red);display:none;white-space:nowrap}
+/* REMOVE BTN */
+.rm-btn{width:20px;height:20px;border-radius:50%;background:transparent;border:1px solid var(--b2);color:var(--t3);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:0;transition:all .15s;flex-shrink:0;margin-left:4px}
+tr:hover .rm-btn{opacity:1}
+.rm-btn:hover{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red)}
 
 /* TABLE */
 .tw{background:var(--card);border-radius:10px;border:1px solid var(--b1);overflow:hidden}
@@ -278,7 +289,6 @@ td:first-child{text-align:left}
       <input class="search" id="srch" placeholder="Filter…" oninput="render()">
     </div>
     <button class="btn" onclick="doRefresh()">&#8635; Refresh</button>
-    <button class="btn btn-p" onclick="addStock()">+ Add</button>
     <button class="btn" id="clearKeyBtn" style="display:none" onclick="clearKey()">Disconnect</button>
   </div>
 </header>
@@ -316,6 +326,14 @@ td:first-child{text-align:left}
     <span style="font-size:11px;color:var(--t3)">Click any row to see company detail</span>
   </div>
 
+  <!-- ADD COMPANY BAR -->
+  <div class="add-bar">
+    <span class="add-bar-label">+ Add Company</span>
+    <input id="addInput" class="add-input" placeholder="Type ticker symbol, e.g. PLTR, SOFI, ARM, UBER…" autocomplete="off" autocapitalize="characters" onkeydown="if(event.key==='Enter')addStock()">
+    <button class="btn btn-p" onclick="addStock()" style="white-space:nowrap;flex-shrink:0">Add</button>
+    <span class="add-err" id="addErr">Symbol not found or already added</span>
+  </div>
+
   <div class="tw">
     <table>
       <thead><tr>
@@ -340,34 +358,26 @@ td:first-child{text-align:left}
 
 <script>
 /* ── WATCHLIST ────────────────────────────────────────────────────── */
-const WATCH=[
-  {sym:'AAPL', sector:'Tech',       pe:25},
-  {sym:'MSFT', sector:'Tech',       pe:30},
-  {sym:'NVDA', sector:'Tech',       pe:50},
-  {sym:'META', sector:'Tech',       pe:25},
-  {sym:'GOOGL',sector:'Tech',       pe:25},
-  {sym:'AMD',  sector:'Tech',       pe:40},
-  {sym:'TSM',  sector:'Tech',       pe:18},
-  {sym:'NFLX', sector:'Tech',       pe:40},
-  {sym:'JPM',  sector:'Finance',    pe:14},
-  {sym:'V',    sector:'Finance',    pe:30},
-  {sym:'MA',   sector:'Finance',    pe:32},
-  {sym:'BRK-B',sector:'Finance',    pe:20},
-  {sym:'GS',   sector:'Finance',    pe:13},
-  {sym:'AMZN', sector:'Consumer',   pe:45},
-  {sym:'TSLA', sector:'Consumer',   pe:80},
-  {sym:'COST', sector:'Consumer',   pe:48},
-  {sym:'NKE',  sector:'Consumer',   pe:28},
-  {sym:'JNJ',  sector:'Healthcare', pe:18},
-  {sym:'UNH',  sector:'Healthcare', pe:22},
-  {sym:'LLY',  sector:'Healthcare', pe:55},
-  {sym:'PFE',  sector:'Healthcare', pe:12},
-  {sym:'XOM',  sector:'Energy',     pe:14},
-  {sym:'CVX',  sector:'Energy',     pe:13},
-  {sym:'SPY',  sector:'ETF',        pe:25},
-  {sym:'QQQ',  sector:'ETF',        pe:30},
-  {sym:'VTI',  sector:'ETF',        pe:22},
+const DEFAULT_WATCH=[
+  {sym:'AAPL', sector:'Tech',     pe:25},
+  {sym:'MSFT', sector:'Tech',     pe:30},
+  {sym:'NVDA', sector:'Tech',     pe:50},
+  {sym:'GOOGL',sector:'Tech',     pe:25},
+  {sym:'AMZN', sector:'Consumer', pe:45},
+  {sym:'META', sector:'Tech',     pe:25},
+  {sym:'TSLA', sector:'Consumer', pe:80},
+  {sym:'JPM',  sector:'Finance',  pe:14},
+  {sym:'V',    sector:'Finance',  pe:30},
+  {sym:'SPY',  sector:'ETF',      pe:25},
 ];
+// Merge saved custom stocks from localStorage
+function loadCustomStocks(){
+  try{ return JSON.parse(localStorage.getItem('custom_stocks')||'[]'); }catch(e){return[];}
+}
+function saveCustomStocks(list){
+  localStorage.setItem('custom_stocks', JSON.stringify(list));
+}
+let WATCH=[...DEFAULT_WATCH, ...loadCustomStocks().filter(c=>!DEFAULT_WATCH.find(d=>d.sym===c.sym))];
 const IDX_SYMS=['SPY','QQQ','DIA','^VIX','GLD','USO'];
 
 let store=[];
@@ -856,6 +866,7 @@ function render(){
         <div class="stlogo">${init}</div>
         <div><div class="sym">${r.cfg.sym}</div><div class="sn">${q.name||''}</div></div>
         <span class="stag">${r.cfg.sector}</span>
+        <button class="rm-btn" onclick="removeStock('${r.cfg.sym}',event)" title="Remove">✕</button>
       </div></td>
       <td><strong>${f.p(q.price)}</strong></td>
       <td><span class="${cc(q.change)}">${q.change>=0?'+':''}${f.c(Math.abs(q.change))}</span></td>
@@ -939,13 +950,48 @@ function setFil(s,el){
   el.classList.add('on'); render();
 }
 
-/* ── ADD STOCK ───────────────────────────────────────────────────── */
-function addStock(){
-  const raw=prompt('Ticker symbol (e.g. PLTR, SOFI, ARM):');
-  if(!raw) return;
-  const sym=raw.trim().toUpperCase();
-  if(WATCH.find(w=>w.sym===sym)){alert(sym+' already in watchlist.');return;}
-  WATCH.push({sym,sector:'Custom',pe:25}); doRefresh();
+/* ── ADD / REMOVE STOCK ──────────────────────────────────────────── */
+async function addStock(){
+  const input=document.getElementById('addInput');
+  const errEl=document.getElementById('addErr');
+  const sym=(input.value||'').trim().toUpperCase().replace(/\s+/g,'');
+  errEl.style.display='none';
+  if(!sym) return;
+  if(WATCH.find(w=>w.sym===sym)){
+    errEl.textContent='Already in your watchlist.';
+    errEl.style.display='inline'; return;
+  }
+  const btn=document.querySelector('.add-bar .btn-p');
+  btn.textContent='Checking…'; btn.disabled=true;
+  // Quick validation: try to fetch the symbol
+  const q=await fetchYFsym(sym);
+  btn.textContent='Add'; btn.disabled=false;
+  if(!q){
+    errEl.textContent='Symbol not found — check ticker and try again.';
+    errEl.style.display='inline'; return;
+  }
+  const newEntry={sym, sector:'Custom', pe:25};
+  WATCH.push(newEntry);
+  // Persist custom stocks (excluding defaults)
+  const customs=WATCH.filter(w=>!DEFAULT_WATCH.find(d=>d.sym===w.sym));
+  saveCustomStocks(customs);
+  input.value='';
+  doRefresh();
+}
+
+function removeStock(sym, e){
+  e.stopPropagation(); // don't open the panel
+  if(DEFAULT_WATCH.find(d=>d.sym===sym)){
+    // For defaults, just hide from view (can't delete permanently)
+    // So we do allow removing even defaults — user can refresh to reset
+  }
+  const idx=WATCH.findIndex(w=>w.sym===sym);
+  if(idx>-1) WATCH.splice(idx,1);
+  // Update persisted customs
+  const customs=WATCH.filter(w=>!DEFAULT_WATCH.find(d=>d.sym===w.sym));
+  saveCustomStocks(customs);
+  store=store.filter(r=>r.cfg.sym!==sym);
+  updateCards(); render();
 }
 
 /* ── SKELETON ────────────────────────────────────────────────────── */
